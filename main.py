@@ -5,7 +5,7 @@ import sys
 flag_irace = False
 execution = True
 
-if len(sys.argv) > 1:
+if len(sys.argv) > 1 and sys.argv[1] != 'local':
 
     flag_irace = True
 
@@ -30,20 +30,39 @@ if len(sys.argv) > 1:
 
     wordcount_obj = WordCountSparkCassandraIrace(parameters)
 
+elif len(sys.argv) > 1 and sys.argv[1] == 'local':
+
+    parameters = {
+        "memory": f"{sys.argv[2]}g",
+        "cores": sys.argv[3],      
+        "shufflePartitions": sys.argv[4],
+        "parallelism": sys.argv[5],
+        "speculation": f"{sys.argv[6]}",
+        "partitionOverwriteMode": f"{sys.argv[7]}",
+        "cassandra_output_consistency_level": f"{sys.argv[8]}",
+        "cassandra_input_split_size_in_mb": sys.argv[9],
+        "cassandra_input_batch_size_rows": sys.argv[10],
+        "cassandra_input_batch_grouping_buffer_size": sys.argv[11]
+    }
+
+    wordcount_obj = WordCountSparkCassandraIrace(parameters)    
+
 else:
     parameters = {}
     wordcount_obj = WordCountSparkCassandraIrace()
 
 
-file_path = '/home/ubuntu/irace-wordcount/files'
+file_path = '/home/ubuntu/irace-wordcount/files/logs'
 
 try:
     begin = datetime.now()
 
-    wordcount_obj.word_count(path=file_path)
+    #wordcount_obj.word_count(path=file_path)
+
+    wordcount_obj.word_count_logs(path=file_path)
 
     end = datetime.now()
-    total = (end - begin).total_seconds()/60
+    total = (end - begin).total_seconds() #/60
 
 except Exception as error:
     end = datetime.now()

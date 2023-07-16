@@ -16,6 +16,7 @@ class WordCountSparkCassandraIrace:
         self.cassandra_key_space = 'analytics_data'
         self.cassandra_wordcount_table = 'wordcount'
         self.cassandra_metadata_table = 'irace_metadata'
+        self.cassandra_logs_table = 'logs_wordcount'
 
     def spark_connection(self):
         try:
@@ -132,6 +133,25 @@ class WordCountSparkCassandraIrace:
             else:
                 df = df.union(df_count)
 
-        self.save_data_cassandra(df, self.cassandra_key_space, self.cassandra_wordcount_table, 'overwrite')
+        self.save_data_cassandra(df, self.cassandra_key_space, self.cassandra_metadata_table, 'overwrite')
+
+    def word_count_logs(self, path):
+        files = self.list_files(path)
+        schema = self.build_wordcount_schema()
+
+        for file in files:
+            print(file)
+            text_file = self.sc.textFile(f"{path}/{file}")
+
+            counts = text_file.flatMap(lambda line: line.split(" ")) \
+                              .map(lambda word: (word.lower(), 1)) \
+                              .reduceByKey(lambda x, y: x + y)
+        
+            df_count = self.spark.createDataFrame(counts, schema=schema)
+
+            df_count = df_count.dropna()
+            df_count = df_count.filter(col('word')!='')
+
+            self.save_data_cassandra(df_count, self.cassandra_key_space, self.cassandra_logs_table, 'overwrite')
 
                     
