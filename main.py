@@ -1,6 +1,16 @@
 from WordCount import WordCountSparkCassandraIrace
+from cassandra.cluster import Cluster
 from datetime import datetime
 import sys
+
+print(datetime.now(), 'Starting process')
+
+cluster = Cluster(['localhost'])
+session = cluster.connect()
+
+# removing data from logs table every execution 
+session.execute("TRUNCATE TABLE analytics_data.logs")
+session.execute("TRUNCATE TABLE analytics_data.logs_agg")
 
 flag_irace = False
 execution = True
@@ -59,7 +69,8 @@ try:
 
     #wordcount_obj.word_count(path=file_path)
 
-    wordcount_obj.word_count_logs(path=file_path)
+    wordcount_obj.logs(path=file_path)
+    wordcount_obj.agg_log_data()
 
     end = datetime.now()
     total = (end - begin).total_seconds() #/60
@@ -70,10 +81,11 @@ except Exception as error:
     print(error)
     total = 100000000
 
+print(datetime.now(), 'Process finished')
 print("\n")
 print(total)
 
 if flag_irace:
-    wordcount_obj.irace_save_metadata(execution_id=sys.argv[1], instance_id=instance_id, configuration_id=configuration_id, parameters=parameters, begin=begin, end=end, total=total, execution_status=execution)
+    wordcount_obj.irace_save_metadata(execution_id=str(sys.argv[1]), instance_id=instance_id, configuration_id=configuration_id, parameters=parameters, begin=begin, end=end, total=total, execution_status=execution)
 
 wordcount_obj.spark_stop()

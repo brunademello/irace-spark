@@ -2,9 +2,9 @@ import findspark
 findspark.init("/mnt/spark/")
 
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, FloatType, TimestampType, BooleanType
-from pyspark.sql.functions import lit, col, udf
+from pyspark.sql.functions import lit, col, udf, split
 from pyspark.sql import SparkSession
-import datetime
+from datetime import datetime
 import uuid
 import os
 
@@ -16,7 +16,8 @@ class WordCountSparkCassandraIrace:
         self.cassandra_key_space = 'analytics_data'
         self.cassandra_wordcount_table = 'wordcount'
         self.cassandra_metadata_table = 'irace_metadata'
-        self.cassandra_logs_table = 'logs_wordcount'
+        self.cassandra_logs_table = 'logs'
+        self.cassandra_logs_agg_table = 'logs_agg'
 
     def spark_connection(self):
         try:
@@ -95,7 +96,7 @@ class WordCountSparkCassandraIrace:
     def irace_save_metadata(self, execution_id, instance_id, configuration_id, parameters, begin, end, total, execution_status):
         
         schema = self.build_metadata_schema()
-        data = [(execution_id, int(instance_id), int(configuration_id), parameters, begin, end, total, execution_status)]
+        data = [(int(execution_id), int(instance_id), int(configuration_id), parameters, begin, end, total, execution_status)]
 
         df = self.spark.createDataFrame(data, schema=schema)
 
@@ -135,23 +136,35 @@ class WordCountSparkCassandraIrace:
 
         self.save_data_cassandra(df, self.cassandra_key_space, self.cassandra_metadata_table, 'overwrite')
 
-    def word_count_logs(self, path):
+    def logs(self, path):
         files = self.list_files(path)
-        schema = self.build_wordcount_schema()
 
         for file in files:
-            print(file)
-            text_file = self.sc.textFile(f"{path}/{file}")
+            print(datetime.now(), file)
 
-            counts = text_file.flatMap(lambda line: line.split(" ")) \
-                              .map(lambda word: (word.lower(), 1)) \
-                              .reduceByKey(lambda x, y: x + y)
+            df = self.spark.read.csv(f"{path}/{file}", sep=' ', header=False)
+            
+            df = df.withColumn('ip', split(col('_c2'), '\t').getItem(0))
+            df = df.withColumn('time', col('_c4'))
+
+            df = df.select(col('ip'), col('time'))
+
+            self.save_data_cassandra(df, self.cassandra_key_space, self.cassandra_logs_table, 'append')
+
+    def agg_log_data(self):
+
+        print(datetime.now(), 'Data aggregation')
+
+        df = self.spark.read.format("org.apache.spark.sql.cassandra").options(table=self.cassandra_logs_table, keyspace=self.cassandra_key_space).load()
+
+        df = df.groupBy('ip').agg({'ip': 'count'})
+
+        df = df.withColumnRenamed('count(ip)', 'count')
+
+        df = df.select('ip', 'count')
+
+        self.save_data_cassandra(df, self.cassandra_key_space, self.cassandra_logs_agg_table, 'overwrite')
+
+
         
-            df_count = self.spark.createDataFrame(counts, schema=schema)
-
-            df_count = df_count.dropna()
-            df_count = df_count.filter(col('word')!='')
-
-            self.save_data_cassandra(df_count, self.cassandra_key_space, self.cassandra_logs_table, 'overwrite')
-
                     
