@@ -9,8 +9,9 @@ cluster = Cluster(['localhost'])
 session = cluster.connect()
 
 # removing data from logs table every execution 
-session.execute("TRUNCATE TABLE analytics_data.logs")
-session.execute("TRUNCATE TABLE analytics_data.logs_agg")
+#session.execute("TRUNCATE TABLE analytics_data.logs")
+#session.execute("TRUNCATE TABLE analytics_data.logs_agg")
+session.execute("TRUNCATE TABLE analytics_data.logs_wordcount")
 
 flag_irace = False
 execution = True
@@ -67,10 +68,7 @@ file_path = '/home/ubuntu/irace-wordcount/files/logs'
 try:
     begin = datetime.now()
 
-    #wordcount_obj.word_count(path=file_path)
-
-    wordcount_obj.logs(path=file_path)
-    wordcount_obj.agg_log_data()
+    wordcount_obj.logs_word_count(path=file_path)
 
     end = datetime.now()
     total = (end - begin).total_seconds() #/60

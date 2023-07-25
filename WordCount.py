@@ -18,6 +18,7 @@ class WordCountSparkCassandraIrace:
         self.cassandra_metadata_table = 'irace_metadata'
         self.cassandra_logs_table = 'logs'
         self.cassandra_logs_agg_table = 'logs_agg'
+        self.cassandra_logs_wordcount = 'logs_wordcount'
 
     def spark_connection(self):
         try:
@@ -136,6 +137,24 @@ class WordCountSparkCassandraIrace:
 
         self.save_data_cassandra(df, self.cassandra_key_space, self.cassandra_metadata_table, 'overwrite')
 
+    def logs_word_count(self, path):
+        files = self.list_files(path)
+        schema = self.build_wordcount_schema()
+
+        for file in files:
+            text_file = self.sc.textFile(f"{path}/{file}")
+
+            counts = text_file.flatMap(lambda line: line.split(" ")) \
+                              .map(lambda word: (word.lower(), 1)) \
+                              .reduceByKey(lambda x, y: x + y)
+        
+            df_count = self.spark.createDataFrame(counts, schema=schema)
+
+            df_count = df_count.dropna()
+            df_count = df_count.filter(col('word')!='')
+
+            self.save_data_cassandra(df_count, self.cassandra_key_space, self.cassandra_logs_wordcount, 'append')
+
     def logs(self, path):
         files = self.list_files(path)
 
@@ -165,6 +184,26 @@ class WordCountSparkCassandraIrace:
 
         self.save_data_cassandra(df, self.cassandra_key_space, self.cassandra_logs_agg_table, 'overwrite')
 
+    def agg_log_data_and_save(self, path):
+
+
+        for file in files:
+            print(datetime.now(), file)
+
+            df = self.spark.read.csv(f"{path}/{file}", sep=' ', header=False)
+            
+            df = df.withColumn('ip', split(col('_c2'), '\t').getItem(0))
+            df = df.withColumn('time', col('_c4'))
+
+            df = df.select(col('ip'), col('time'))
+
+            df = df.groupBy('ip').agg({'ip': 'count'})
+
+            df = df.withColumnRenamed('count(ip)', 'count')
+
+            df = df.select('ip', 'count')
+
+            self.save_data_cassandra(df, self.cassandra_key_space, self.cassandra_logs_agg_table, 'append')
 
         
                     
