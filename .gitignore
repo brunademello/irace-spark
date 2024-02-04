@@ -1,2 +1,5 @@
 files/
-irace/*.log
+logs/
+metrics/
+irace_metadata_2023_07_23/
+*.log

@@ -1,22 +1,18 @@
 from WordCount import WordCountSparkCassandraIrace
-from cassandra.cluster import Cluster
 from datetime import datetime
+import json
+import time
 import sys
 
+date_ref = datetime.now().date().strftime("%Y-%m-%d")
+
 print(datetime.now(), 'Starting process')
-
-cluster = Cluster(['localhost'])
-session = cluster.connect()
-
-# removing data from logs table every execution 
-#session.execute("TRUNCATE TABLE analytics_data.logs")
-#session.execute("TRUNCATE TABLE analytics_data.logs_agg")
-session.execute("TRUNCATE TABLE analytics_data.logs_wordcount")
 
 flag_irace = False
 execution = True
 
-if len(sys.argv) > 1 and sys.argv[1] != 'local':
+# iRace mode: irace chooses the parameters in bash call
+if len(sys.argv) > 1 and sys.argv[1] not in ('local', 'default'):
 
     flag_irace = True
 
@@ -41,49 +37,79 @@ if len(sys.argv) > 1 and sys.argv[1] != 'local':
 
     wordcount_obj = WordCountSparkCassandraIrace(parameters)
 
+# running script in local mode with parameters decided by user
 elif len(sys.argv) > 1 and sys.argv[1] == 'local':
 
     parameters = {
-        "memory": f"{sys.argv[2]}g",
-        "cores": sys.argv[3],      
-        "shufflePartitions": sys.argv[4],
-        "parallelism": sys.argv[5],
-        "speculation": f"{sys.argv[6]}",
-        "partitionOverwriteMode": f"{sys.argv[7]}",
-        "cassandra_output_consistency_level": f"{sys.argv[8]}",
-        "cassandra_input_split_size_in_mb": sys.argv[9],
-        "cassandra_input_batch_size_rows": sys.argv[10],
-        "cassandra_input_batch_grouping_buffer_size": sys.argv[11]
+        "memory": f"{sys.argv[3]}g",
+        "cores": sys.argv[4],      
+        "shufflePartitions": sys.argv[5],
+        "parallelism": sys.argv[6],
+        "speculation": f"{sys.argv[7]}",
+        "partitionOverwriteMode": f"{sys.argv[8]}",
+        "cassandra_output_consistency_level": f"{sys.argv[9]}",
+        "cassandra_input_split_size_in_mb": sys.argv[10],
+        "cassandra_input_batch_size_rows": f"{sys.argv[11]}",
+        "cassandra_input_batch_grouping_buffer_size": sys.argv[12]
     }
 
-    wordcount_obj = WordCountSparkCassandraIrace(parameters)    
+    wordcount_obj = WordCountSparkCassandraIrace(parameters)  
 
+# running script with spark default configuration 
 else:
     parameters = {}
     wordcount_obj = WordCountSparkCassandraIrace()
 
 
-file_path = '/home/ubuntu/irace-wordcount/files/logs'
+file_path = '/home/ubuntu/projeto/spark-wordcount-cassandra-main/files/logs/to_use'
 
-try:
-    begin = datetime.now()
+for i in range(11):
+    try:
+            begin = datetime.now()
+            wordcount_obj.logs_word_count(path=file_path)
+            end = datetime.now()
+            total = (end - begin).total_seconds() #/60
+    except Exception as error:
+            end = datetime.now()
+            execution = False
+            print(error)
+            total = 100000000
 
-    wordcount_obj.logs_word_count(path=file_path)
+    print(datetime.now(), 'Process finished')
+    print("\n")
+    print(total)
 
-    end = datetime.now()
-    total = (end - begin).total_seconds() #/60
+    if flag_irace:
+            #wordcount_obj.irace_save_metadata(execution_id=str(sys.argv[1]), instance_id=instance_id, configuration_id=configuration_id, parameters=parameters, begin=begin, end=end, total=total, execution_status=execution)
+        irace_metadata = {
+                    "execution_id":str(sys.argv[1]), 
+                    "instance_id":instance_id, 
+                    "configuration_id": configuration_id, 
+                    "parameters":parameters, 
+                    "begin":str(begin), 
+                    "end":str(end), 
+                    "total":str(total), 
+                    "execution_status":execution
+            }
+        file = open(f'logs/irace_metadata_{date_ref}.txt', 'a')
+        file.write(json.dumps(irace_metadata))
+        file.write('\n')
+        file.close()
 
-except Exception as error:
-    end = datetime.now()
-    execution = False
-    print(error)
-    total = 100000000
-
-print(datetime.now(), 'Process finished')
-print("\n")
-print(total)
-
-if flag_irace:
-    wordcount_obj.irace_save_metadata(execution_id=str(sys.argv[1]), instance_id=instance_id, configuration_id=configuration_id, parameters=parameters, begin=begin, end=end, total=total, execution_status=execution)
+    if (len(sys.argv) > 1 and sys.argv[1] == 'local') or (len(sys.argv) == 2):
+            if sys.argv[1] == 'default':
+                execution_result = {
+                        'config_id': sys.argv[1],
+                        'total': total
+                }
+            else:
+                execution_result = {
+                        'config_id': sys.argv[2],
+                        'total': total
+                }
+            file = open(f'metrics/config_metrics_{date_ref}.txt', 'a')
+            file.write(json.dumps(execution_result))
+            file.write('\n')
+            file.close()
 
 wordcount_obj.spark_stop()
