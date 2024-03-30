@@ -1,5 +1,6 @@
 maxExperiments = 1000
 trainInstancesDir = ""
-trainInstancesFile = "instances.txt"
+trainInstancesFile = "instances_training.txt"
+testInstancesFile = "instances_test.txt"
 targetRunner = "targetRunner.sh"
 configurationsFile= "configurations.txt"
