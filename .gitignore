@@ -6,3 +6,4 @@ irace_metadata_2023_07_23/
 .env
 __pycache__
 logs - 20240330/
+irace-logs/__pycache__
