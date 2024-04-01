@@ -1,5 +1,8 @@
 files/
-logs/
+logs - VM/
 metrics/
 irace_metadata_2023_07_23/
 *.log
+.env
+__pycache__
+logs - 20240330/
