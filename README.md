@@ -22,7 +22,7 @@ This project provides:
 
 ## Installation
 
-Clone this repository and follow the steps described on this [documentation](https://docs.google.com/document/d/1qMOu4mEjNGpoYA9r1__tG0eXXf3YvdT1iMvZw3rufyg/edit) to install the 
+Clone this repository and follow the steps described on this [documentation](https://docs.google.com/document/d/1qMOu4mEjNGpoYA9r1__tG0eXXf3YvdT1iMvZw3rufyg/edit) to install the Irace package, the correct version of Spark and the Casssandra database.
 
 ## Usage
 
@@ -30,7 +30,6 @@ In the scenario's folder, run the command to init irace and append the output in
 
 ```
 nohup irace >> irace.log &
-
 ```
 
 To follow the execution, run the command:
