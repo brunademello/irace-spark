@@ -1,5 +1,4 @@
 from pyspark.sql import SparkSession
-from datetime import datetime
 
 def build_session(parameters: dict):
 
@@ -17,7 +16,7 @@ def build_session(parameters: dict):
                 .config("spark.sql.sources.partitionOverwriteMode", parameters.get('partitionOverwriteMode', 'static'))\
                 .config("spark.cassandra.output.consistency.level", parameters.get('cassandraOutputConsistencyLevel', 'LOCAL_ONE'))\
                 .config("spark.cassandra.input.split.sizeInMB", parameters.get('cassandraInputSplitSizeinMB', 64))\
-                .config("spark.cassandra.output.batch.size.rows", parameters.get('cassandraOutputBatchSizeRows', None))\
+                .config("spark.cassandra.output.batch.size.rows", parameters.get('cassandraOutputBatchSizeRows', 'auto'))\
                 .config("spark.cassandra.output.batch.grouping.buffer.size", parameters.get('cassandraOutputBatchGroupingBufferSize', 1000))\
                 .config("spark.cassandra.output.concurrent.writes", parameters.get('cassandraOutputConcurrentWrites', 5))\
                 .getOrCreate()
