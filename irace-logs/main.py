@@ -1,7 +1,8 @@
-from WordCount import WordCountSparkCassandraIrace
-from helpers.parser import build_parser
 from helpers.irace_metadata import save_irace_metadata
 from datetime import datetime, timedelta
+from helpers.parser import build_parser
+from SparkApps import SparkApps
+from pathlib import Path
 import sys
 
 bash_parameters = sys.argv
@@ -17,8 +18,9 @@ instance_id = args.instanceId
 seed = args.seed
 instance = args.instance
 
-file_path = f'/home/bruna/irace/files/{instance}'
+file_path = f'{Path.cwd()}/files/{instance}'
 
+# creating set of parameters to build spark session
 parameters = {}
 
 for key, value in vars(args).items():
@@ -28,33 +30,34 @@ for key, value in vars(args).items():
         else:
             parameters[key] = value
 
-wordcount_obj = WordCountSparkCassandraIrace(parameters)
+spark_obj = SparkApps(parameters)
 
+# running spark application
 try:
     begin = datetime.now()
-    wordcount_obj.logs_word_count(path=file_path)
+    spark_obj.logs_word_count(path=file_path)
     end = datetime.now()
     total = (end - begin).total_seconds() 
-        
+
     execution = True
 
 except Exception as error:
     end = datetime.now()
     execution = False
     print(error)
-    # adding an arbitrary value high enough to not impact the final result 
+    # adding arbitrary value high enough to not impact the final result 
     # probably this confguration will be discarded when Irace is running
     total = 100000000
 
 
-# Building dict with irace metadata to save every execution of this script
+# Building dict to save irace metadate on every execution
     
 if instance_id is not None:
     # if instance_id is not None it means that Irace is running
     # because this value is definied by Irace
 
     irace_metadata = {
-        'instance_id': instance_id,
+        'instance': instance,
         'configuration_id': configuration_id,
         'parameters': parameters,
         'begin': begin, 
@@ -63,10 +66,16 @@ if instance_id is not None:
         'execution_status': execution
     }
 
-    save_irace_metadata(date_ref, irace_metadata)
+    path = f"{Path.cwd()}/logs"
+
+    save_irace_metadata(date_ref, path, irace_metadata)
 
 # DO NOT REMOVE THIS PRINT AND DO NOT PRINT ANYTHING ELSE AFTER THIS
-# THE VALUE WILL BE USE BY IRACE
+# THE VALUE WILL BE USE BY IRACE 
+#####################################################################
+
 print(total)
 
-wordcount_obj.spark_stop()
+######################################################################
+
+spark_obj.spark_stop()
