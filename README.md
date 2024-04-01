@@ -11,8 +11,30 @@ The irace package is a algorithm that implements the iterated racing and it is u
 
 ## Features
 
+This project provides:
+
+1. Spark application 
+   An _word count_ application was developed in order to manipulate data from a log file and save it in a table from cassandra database.
+2. Irace configuration
+   The files containing the parameters considered, a scenario, first configuration and instances.
+3. Irace configuration test
+   In order to test the bests configuration found by Irace, an script was developed to run the application 10 times for each configuration in order to calculate the mean time.
+
 ## Installation
+
+Clone this repository and follow the steps described on this [documentation](https://docs.google.com/document/d/1qMOu4mEjNGpoYA9r1__tG0eXXf3YvdT1iMvZw3rufyg/edit) to install the 
 
 ## Usage
 
-### wordcount app
+In the scenario's folder, run the command to init irace and append the output in a file:
+
+```
+nohup irace >> irace.log &
+
+```
+
+To follow the execution, run the command:
+
+```
+tail -f irace.log
+```
