@@ -8,6 +8,7 @@ def build_session(parameters: dict):
                 .config("spark.jars.packages", "com.datastax.spark:spark-cassandra-connector_2.12:3.4.0")\
                 .config("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions")\
                 .config("spark.executor.memory", parameters.get('executorMemory', "1G"))\
+                .config("spark.executor.instances", parameters.get('executorInstances', 2))\
                 .config("spark.executor.cores", parameters.get('driverCores', 1))\
                 .config("spark.sql.shuffle.partitions", parameters.get('sqlShufflePartitions', 200))\
                 .config("spark.default.parallelism", parameters.get('defaultParallelism', 8))\

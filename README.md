@@ -7,6 +7,7 @@ The Apache Spark is a set of open source tools widely used for distributed proce
 The irace package is a algorithm that implements the iterated racing and it is used for optimize an application by chosing the best parameters configuration automatically. Given a set of parameters and a range of values from their domains, the irace execute the target runner several times in order to find the best combination considering the cost definied in the application. 
 
 ![Irace](images/irace-flow.jpg)
+![how-irace-works](images/irace-working.jpg)
 
 
 ## Features

@@ -4,6 +4,7 @@ from pathlib import Path
 def save_irace_metadata(date_ref, path, params: dict):
     irace_metadata = {
             "instance": params['instance'], 
+            "instance_id": params['instance_id'],
             "configuration_id": params['configuration_id'], 
             "parameters": params['parameters'], 
             "begin": str(params['begin']), 

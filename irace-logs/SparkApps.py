@@ -5,6 +5,8 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType, 
 from pyspark.sql.functions import lit, col, udf, split
 from helpers.spark_session import build_session
 from datetime import datetime
+from pathlib import Path
+import ipaddress
 import uuid
 import os
 import re
@@ -19,6 +21,15 @@ class SparkApps:
         self.cassandra_logs_table = 'logs'
         self.cassandra_logs_agg_table = 'logs_agg'
         self.cassandra_logs_wordcount = 'logs_wordcount'
+
+        self.extract_ip_network_udf = udf(lambda ip: self.extract_ip_network(ip), StringType())
+        self.extract_ip_version_udf = udf(lambda ip: self.extract_ip_version(ip), StringType())
+        self.extract_ip_broadcast_udf = udf(lambda ip: self.extract_ip_broadcast(ip), StringType())
+        self.extract_ip_netaddress_udf = udf(lambda ip: self.extract_ip_netaddress(ip), StringType())
+        self.extract_ip_private_udf = udf(lambda ip: self.extract_ip_private(ip), StringType())
+        self.extract_ip_netmask_udf = udf(lambda ip: self.extract_ip_netmask(ip), StringType())
+
+
 
     def spark_connection(self):
         try:
@@ -137,24 +148,106 @@ class SparkApps:
         else:
             return None
 
+    def extract_ip_network(self, ip):
+        return ipaddress.ip_network(ip)
+    
+    def extract_ip_version(self, ip):
+        return ipaddress.ip_address(ip).version
+     
+    def extract_ip_private(self, ip):
+        return ipaddress.ip_address(ip).is_private
+    
+    def extract_ip_broadcast(self, ip):
+        return ipaddress.ip_network(ip).broadcast_address
+    
+    def extract_ip_netaddress(self, ip):
+        return ipaddress.ip_network(ip).network_address
+    
+    def extract_ip_netmask(self, ip):
+        return ipaddress.ip_network(ip).netmask
+    
+    @staticmethod
+    def extract_info(ip):
+        ip_obj = ipaddress.ip_address(ip)
+        network = ipaddress.ip_network(ip)
+        version = ip_obj.version
+        is_private = ip_obj.is_private
+        broadcast = str(network.broadcast_address)
+        net_address = str(network.network_address)
+        subnet_mask = str(network.netmask)
+
+        return ip, str(network), str(version), str(is_private), broadcast, net_address, subnet_mask
+
+    def construct_dataset(self, df):
+
+        df = df.drop('count')
+
+        schema = StructType([
+            StructField("ip", StringType(), True),
+            StructField("network", StringType(), True),
+            StructField("version", StringType(), True),
+            StructField("is_private", StringType(), True),
+            StructField("broadcast", StringType(), True),
+            StructField("network_address", StringType(), True),
+            StructField("subnet_mask", StringType(), True)
+        ])
+
+        extract_info_udf = udf(lambda ip: SparkApps.extract_info(ip), schema)
+
+        df = df.withColumn("ip_info", extract_info_udf(df["word"]))
+
+        df = df.select("ip_info.ip", "ip_info.network", "ip_info.version", "ip_info.is_private",
+                       "ip_info.broadcast", "ip_info.network_address", "ip_info.subnet_mask")
+
+        df.show()
+
+        file_path = f'{Path.cwd()}/ip_info'
+               
+        df.write.csv(file_path, mode="overwrite", header=True)
+
+    def extract_ip_info(self, df):
+
+        df = df.drop('count')
+
+        df = df.withColumn("network", self.extract_ip_network_udf(df['word']))\
+               .withColumn("version", self.extract_ip_version_udf(df['word']))\
+               .withColumn("is_private", self.extract_ip_private_udf(df['word']))\
+               .withColumn("broadcast", self.extract_ip_broadcast_udf(df['word']))\
+               .withColumn("net_address", self.extract_ip_netaddress_udf(df['word']))\
+               .withColumn("netmask", self.extract_ip_netmask_udf(df['word']))\
+               
+        file_path = f'{Path.cwd()}/ip_info'
+               
+        df.write.csv(file_path, mode="overwrite", header=True)
+
+
     def logs_word_count(self, path):
         schema = self.build_wordcount_schema()
 
         text_files = self.sc.textFile(f"{path}/*.txt")
 
-        text_files = text_files.map(self.extract_ip).filter(lambda x: x is not None)
+        text_files = text_files.map(self.extract_ip).filter(lambda x: x is not None)   
 
         counts = text_files.flatMap(lambda line: line.split(" ")) \
                               .map(lambda word: (word.lower(), 1)) \
                               .reduceByKey(lambda x, y: x + y)
         
         df_count = self.spark.createDataFrame(counts, schema=schema)
+
+        self.construct_dataset(df_count)
         
         print(datetime.now(), 'Ingesting data into cassandra table')
 
         self.save_data_cassandra(df_count, self.cassandra_key_space, self.cassandra_logs_wordcount, 'append')
 
-        print(datetime.now(), 'Data ingested succefully in cassandra table')
+        end = datetime.now()
+
+        print(counts.toDebugString()) 
+        print(text_files.toDebugString()) 
+
+        print(end, 'Data ingested succefully in cassandra table')
+
+        return end        
 
     def logs(self, path):
         files = self.list_files(path)

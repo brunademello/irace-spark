@@ -1,7 +1,7 @@
 from helpers.irace_metadata import save_irace_metadata
 from datetime import datetime, timedelta
 from helpers.parser import build_parser
-from SparkApps import SparkApps
+from SparkApp import SparkApp
 from pathlib import Path
 import sys
 
@@ -30,23 +30,23 @@ for key, value in vars(args).items():
         else:
             parameters[key] = value
 
-spark_obj = SparkApps(parameters)
+spark_obj = SparkApp(parameters)
 
 # running spark application
-try:
-    begin = datetime.now()
-    end = spark_obj.logs_word_count(path=file_path)
-    total = (end - begin).total_seconds() 
+# try:
+begin = datetime.now()
+end = spark_obj.word_count(path=file_path)
+total = (end - begin).total_seconds() 
 
-    execution = True
+execution = True
 
-except Exception as error:
-    end = datetime.now()
-    execution = False
-    print(error)
-    # adding arbitrary value high enough to not impact the final result 
-    # probably this confguration will be discarded when Irace is running
-    total = 100000000
+# except Exception as error:
+#     end = datetime.now()
+#     execution = False
+#     print(error)
+#     # adding arbitrary value high enough to not impact the final result 
+#     # probably this confguration will be discarded when Irace is running
+#     total = 100000000
 
 
 # Building dict to save irace metadate on every execution
@@ -70,8 +70,8 @@ if instance_id is not None:
 
     save_irace_metadata(date_ref, path, irace_metadata)
 
-# DO NOT REMOVE THIS PRINT AND DO NOT PRINT ANYTHING ELSE AFTER THIS
-# THE VALUE WILL BE USE BY IRACE 
+# DO NOT REMOVE THIS PRINT AND DO NOT PRINT ANYTHING ELSE AFTER THIS!
+# THE VALUE WILL BE USED BY IRACE 
 #####################################################################
 
 print(total)
