@@ -7,3 +7,11 @@ irace_metadata_2023_07_23/
 __pycache__
 logs - 20240330/
 irace-logs/__pycache__
+notebooks/images
+notebooks\.ipynb_checkpoints
+notebooks\sandbox
+test_dash.py
+teste_ip.py
+irace-gutemberg/logs
+irace-gutemberg/result_2024_04_26.png
+imagens
